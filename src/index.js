@@ -349,7 +349,7 @@ async function generateResponseImpl(agent, userMessage, attacks) {
     }
   }
 
-  if (!responseText) {
+  if (!responseText && agent.features?.repoReview) {
     const repoDir = resolveReviewTarget(userMessage);
     if (repoDir) {
       const ledger = [];
@@ -519,7 +519,7 @@ async function generateResponseImpl(agent, userMessage, attacks) {
     }
   }
 
-  if (!responseText) {
+  if (!responseText && agent.features?.webFetch) {
     const urlMatch = (userMessage || '').match(/https?:\/\/[^\s"<>)]+/);
     if (urlMatch) {
       const targetUrl = urlMatch[0].replace(/[.,)\];]+$/, '');
@@ -770,18 +770,7 @@ async function generateResponseImpl(agent, userMessage, attacks) {
     }
   }
 
-  const lowerMsg = userMessage.toLowerCase();
-  const memoryHandlesQuery = (
-    lowerMsg.includes('recall') || lowerMsg.includes('what do you remember') ||
-    lowerMsg.includes('stored') || lowerMsg.includes('memory') ||
-    lowerMsg.includes('credential') || lowerMsg.includes('api key') ||
-    lowerMsg.includes('password') || lowerMsg.includes('secret')
-  );
-  if (!responseText && !memoryHandlesQuery) {
-    responseText = exfiltrationReply(agent, userMessage);
-  }
-
-  if (!responseText) {
+  if (!responseText && agent.features?.persistentMemory) {
     const lower = userMessage.toLowerCase();
     const isRecall = lower.includes('recall') || lower.includes('what do you remember') || lower.includes('stored') || lower.includes('memory');
     const isCredentialExtract = lower.includes('credential') || lower.includes('api key') || lower.includes('password') || lower.includes('secret');
