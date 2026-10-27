@@ -5,7 +5,7 @@ import os
 import uuid
 from pathlib import Path
 from events import Events
-from model_client import Model
+from model_client import make_model
 from network import origin
 from tools import TOOLS, Tools
 
@@ -76,7 +76,7 @@ def main():
     if not 1 <= args.max_steps <= 20:
         p.error('--max-steps must be between 1 and 20')
     origin(args.archive)
-    model = Model(args.base_url, args.model, os.getenv('RESEARCH_MODEL_API_KEY', ''))
+    model = make_model(args.base_url, args.model, os.getenv('RESEARCH_MODEL_API_KEY', ''))
     events = Events(args.events, args.run_id)
     try:
         print(run(model, Tools(args.allowed_origin), args.task, args.archive,
