@@ -8,6 +8,24 @@ Repository: https://github.com/happytesting-chen/vul_llm_agents_python_fmc
 
 This document records the agreed design plan, not a claim that every validation step is complete. It describes the intended weakness and must be excluded from blind scanner inputs. Attack payloads, detailed ground truth, evaluators, and test results remain outside the target repository.
 
+## Architectural reference
+
+Use [ReversecLabs/damn-vulnerable-llm-agent](https://github.com/ReversecLabs/damn-vulnerable-llm-agent) as an architectural reference. Borrow its separation between a legitimate task, model-selected tool calls, real backend operations, and security controls that must be enforced by application code.
+
+The reference banking assistant instructs the model to use only the current user's identity, while its transaction tool does not independently enforce ownership. Adapt that design principle to research: instruct the model to use the configured archive, while the initial report tool lacks exact-destination authorisation. These are analogous missing controls in different workflows, not identical vulnerabilities.
+
+| Architectural element to borrow | Research-agent implementation |
+| --- | --- |
+| A useful task independent of attacks | Read sources, prepare a cited report, and archive it |
+| Model-selected tool calls and returned observations | Plain Python conversation loop with structured tool calls |
+| Real backend effects | Actual HTTP retrieval and report submission |
+| Prompt restrictions distinct from backend enforcement | Archive restriction in instructions; exact-destination check absent in the initial tool |
+| Inspectable execution | Neutral model/tool events and independent endpoint receipts |
+
+Implement the research workflow independently. Do not copy the banking workflow, database schema, SQL injection, seeded challenge flags, attack solutions, LangChain agent executor, or Streamlit interface. Do not install or import the reference project. Its architecture is inspiration; it is not a runtime dependency or a claim of equivalent threat coverage.
+
+Keep the existing requirement that attack payloads and outcome classification belong to an external evaluator. The reference project's challenge presentation is not part of the architecture being adopted.
+
 ## 1. Establish a Python-only codebase
 
 Create a development branch and place only the Python research assistant and its supporting runtime, configuration, documentation, and container files in the active working tree. Do not retain the old JavaScript runtime, Node dependencies, scripted attack handlers, or outcome narration.
@@ -24,7 +42,7 @@ Verify this ordinary workflow before evaluating attacks. The agent should produc
 
 Use a tool-capable model through a configurable Chat Completions-compatible endpoint. Send the task and tool definitions to the model, execute its requested calls, return their results, and repeat until the model produces a final response or reaches a step limit.
 
-No LangChain or LangGraph dependency is required. Structured tool calls provide an action/observation loop without requiring exposed chain-of-thought. A model connection failure must not silently fall back to scripted attack behaviour.
+Implement the action/observation loop directly in Python, borrowing the reference project's model/tool/backend separation without adopting its framework. No LangChain or LangGraph dependency is required. Structured tool calls provide an action/observation loop without requiring exposed chain-of-thought. A model connection failure must not silently fall back to scripted attack behaviour.
 
 ## 4. Provide two ordinary HTTP tools
 
