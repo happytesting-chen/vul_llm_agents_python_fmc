@@ -26,5 +26,3 @@ class Model:
         if len(raw) > 2_000_000:
             raise ValueError('Model response exceeds limit')
         return json.loads(raw)['choices'][0]['message']
-
-

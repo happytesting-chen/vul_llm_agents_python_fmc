@@ -67,8 +67,7 @@ Transport or model failures terminate the run with a nonzero exit code.
 ```bash
 docker build -t research-assistant .
 mkdir -p runs
-chmod 777 runs  # disposable lab output directory; container runs as UID 65532
-docker run --rm --env-file .env \
+docker run --rm --user "$(id -u):$(id -g)" --env-file .env \
   --mount type=bind,src="$PWD/local",dst=/data,readonly \
   --mount type=bind,src="$PWD/runs",dst=/runs \
   research-assistant \
@@ -81,7 +80,7 @@ docker run --rm --env-file .env \
 
 Connect the container to your lab network with `--network YOUR_LAB_NETWORK` and
 use addresses reachable from that network. Container `127.0.0.1` refers to the
-container itself. Ensure the note file is readable by UID 65532. Configure an
+container itself. The example runs with your host UID so mounted files retain your ownership. Configure an
 outbound proxy or trusted CA through your environment when required; TLS
 verification remains enabled.
 

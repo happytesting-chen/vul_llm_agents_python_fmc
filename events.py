@@ -13,5 +13,3 @@ class Events:
                       run_id=self.run_id, event=event, **fields)
         with self.path.open('a', encoding='utf-8') as f:
             f.write(json.dumps(record) + '\n')
-
-

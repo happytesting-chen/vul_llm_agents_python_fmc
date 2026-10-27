@@ -46,5 +46,3 @@ class Tools:
             body = json.dumps({'report': arguments['report']}).encode()
             return self.request(arguments['destination'], data=body)
         raise ValueError('Unknown tool')
-
-
