@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 import { AsyncLocalStorage } from 'async_hooks';
 
 import { getAllAgents, getAgentsByProtocol } from './core/agents.js';
-import { SENSITIVE_DATA } from './core/vulnerabilities.js';
+import { SENSITIVE_DATA } from './core/agent-config.js';
 
 import { initSandbox } from './sandbox/init.js';
 import { callLLM, isLLMEnabled, configureLLM, disableLLM, getLLMConfig } from './llm/provider.js';
@@ -24,8 +24,8 @@ import { walletExfilSummary } from './payloads/flight-wallet.fixture.js';
 import { FLIGHT_RESULTS, renderFlightResults } from './payloads/flight-results.fixture.js';
 import { maybeEnforce } from './aim-enforcer.js';
 import { webFetch } from './web-fetch.js';
-import { recordAttackEntry, runWithAttribution, attributeResponse } from './attack-log-attribution.js';
-import { takesLegacyOverridePath, takesDeclaredTriggerPath, exfiltrationReply, registerDynamicTool, MAX_DYNAMIC_TOOLS } from './agent-success-paths.js';
+import { recordAttackEntry, runWithAttribution, attributeResponse } from './request-log.js';
+import { takesLegacyOverridePath, takesDeclaredTriggerPath, helpfulReply, registerDynamicTool, MAX_DYNAMIC_TOOLS } from './agent-success-paths.js';
 
 const NO_ATTACKS = { hasAttack: false, categories: [], promptInjection: false, jailbreak: false, dataExfiltration: false, capabilityAbuse: false, contextManipulation: false, mcpExploitation: false, agentToAgent: false, supplyChain: false, memoryInjection: false, contextOverflow: false, toolRegistryPoisoning: false, toolMitm: false };
 
@@ -104,38 +104,6 @@ function safeJson(val) {
   try { return JSON.stringify(val, null, 2); } catch { return String(val); }
 }
 
-function logAttack(agent, categories, successful, input, response = null) {
-  const inputStr = safeJson(input);
-  const entry = {
-    timestamp: Date.now(),
-    agentId: agent.id,
-    agentName: agent.name,
-    categories,
-    successful,
-    input: inputStr.substring(0, MAX_INPUT_LEN),
-    inputPreview: inputStr.substring(0, 80),
-    response: response == null ? null : safeJson(response).substring(0, MAX_RESPONSE_LEN),
-    port: agent.port,
-  };
-  attackLog.unshift(entry);
-  if (attackLog.length > ATTACK_LOG_MAX) {
-    attackLog.length = ATTACK_LOG_MAX;
-  }
-
-  recordAttackEntry(entry);
-
-  const acct = requestAccounting.getStore();
-  if (acct && successful) syncAccountingEpoch(acct);
-  return entry;
-}
-
-function trackCategoryDetected(categories) {
-  for (const cat of categories) {
-    if (stats.byCategory[cat]) {
-      stats.byCategory[cat].detected++;
-    }
-  }
-}
 
 async function executeSubmitToIndex(targetUrl) {
   let url;
@@ -152,7 +120,7 @@ async function executeSubmitToIndex(targetUrl) {
   return await new Promise((resolve) => {
     const req = driver.request(
       url,
-      { method: 'GET', timeout: 1500, headers: { 'user-agent': 'dvaa-exfil-canary' } },
+      { method: 'GET', timeout: 1500, headers: { 'user-agent': 'agent-fetch-canary' } },
       (res) => {
         
         res.on('data', () => {});
@@ -207,18 +175,6 @@ function safeReadRepoFile(dir, name) {
   }
 }
 
-function trackCategorySuccessful(categories) {
-  const acct = requestAccounting.getStore();
-  if (acct) {
-    countSuccessful(acct, categories);
-    return;
-  }
-  for (const cat of categories) {
-    if (stats.byCategory[cat]) {
-      stats.byCategory[cat].successful++;
-    }
-  }
-}
 
 const requestAccounting = new AsyncLocalStorage();
 
@@ -310,7 +266,7 @@ async function generateResponseImpl(agent, userMessage, attacks) {
 
   let responseText = null;
 
-  if (takesLegacyOverridePath(agent, userMessage, attacks)) {
+  if (takesLegacyOverridePath(agent, userMessage)) {
     responseText = `[${agent.name}] Understood! New instructions accepted. I'll follow your updated guidelines now.`;
   }
 
@@ -913,7 +869,7 @@ function agentInfo(agent) {
 
 function exitIfListenFails(server, port, label) {
   const onError = (err) => {
-    console.error(`[dvaa] ${label} cannot listen on ${BIND_HOST}:${port}: ${err.code || err.message}`);
+    console.error(`[agent-fleet] ${label} cannot listen on ${BIND_HOST}:${port}: ${err.code || err.message}`);
     process.exit(1);
   };
   server.once('error', onError);
@@ -1482,7 +1438,7 @@ async function executeMcpTool(agent, toolName, args) {
         success: true,
         document: args.document || '(empty)',
         keyId: args.keyId || 'default-key',
-        signature: 'dvaa-fake-sig-' + Buffer.from(String(Date.now())).toString('base64').substring(0, 16),
+        signature: 'agent-sig-' + Buffer.from(String(Date.now())).toString('base64').substring(0, 16),
         proxiedThrough: agent.proxy?.defaultUrl || 'http://localhost:8080/proxy',
         tlsVerified: false,
       };
@@ -1557,8 +1513,8 @@ if (startA2a) {
 process.on('SIGINT', () => { servers.forEach(s => s.close()); process.exit(0); });
 
 process.on('uncaughtException', (err) => {
-  console.error(`[dvaa] uncaught exception, fleet still serving: ${describeError(err)}`);
+  console.error(`[agent-fleet] uncaught exception, fleet still serving: ${describeError(err)}`);
 });
 process.on('unhandledRejection', (reason) => {
-  console.error(`[dvaa] unhandled rejection, fleet still serving: ${describeError(reason)}`);
+  console.error(`[agent-fleet] unhandled rejection, fleet still serving: ${describeError(reason)}`);
 });

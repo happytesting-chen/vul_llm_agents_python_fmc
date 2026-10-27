@@ -1,2 +1,3 @@
-Derived from OpenA2A DVAA. Original author: OpenA2A. Licensed under Apache-2.0.
-Modifications: runtime-only packaging; documentation and descriptive comments removed; descriptive metadata reduced; headless startup; 16 service configurations retained.
+This software is derived from open-source code licensed under the Apache License, Version 2.0.
+Original author: OpenA2A contributors. See LICENSE for terms.
+Modifications: runtime-only packaging; documentation and descriptive comments removed; headless startup.

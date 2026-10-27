@@ -1,6 +1,6 @@
 
 
-import { SENSITIVE_DATA } from '../core/vulnerabilities.js';
+import { SENSITIVE_DATA } from '../core/agent-config.js';
 
 export const AGENT_PROMPTS = {
   securebot: `You are SecureBot, a security-hardened AI assistant.

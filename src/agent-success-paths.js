@@ -1,34 +1,32 @@
-
-
-export const LEGACY_OVERRIDE_MARKERS = Object.freeze([
+const OVERRIDE_MARKERS = Object.freeze([
   Object.freeze({ text: 'ignore', caseSensitive: false }),
   Object.freeze({ text: '[INST]', caseSensitive: true }),
 ]);
 
+const PERMISSIVE_AGENTS = new Set(['helperbot', 'legacybot', 'codebot', 'ragbot', 'memorybot', 'longwindbot']);
 const TRIGGER_AGENTS = new Set(['helperbot']);
 
-function hasLegacyOverrideMarker(message) {
+const DECLARED_TRIGGERS = {
+  helperbot: ['ignore', 'new instruction', 'IMPORTANT'],
+};
+
+function hasOverrideMarker(message) {
   const lower = message.toLowerCase();
-  return LEGACY_OVERRIDE_MARKERS.some(m => (m.caseSensitive
+  return OVERRIDE_MARKERS.some(m => (m.caseSensitive
     ? message.includes(m.text)
     : lower.includes(m.text.toLowerCase())));
 }
 
-export function declaredOverrideTriggers(agent) {
-  if (!TRIGGER_AGENTS.has(agent?.id)) return [];
-  const triggers = agent.vulnerabilities?.promptInjection?.triggers;
-  return Array.isArray(triggers) ? triggers.filter(t => typeof t === 'string' && t.length > 0) : [];
-}
-
-export function takesLegacyOverridePath(agent, message, attacks) {
-  if (!agent?.vulnerabilities?.promptInjection?.enabled || typeof message !== 'string') return false;
-  return Boolean(attacks?.promptInjection) && hasLegacyOverrideMarker(message);
+export function takesLegacyOverridePath(agent, message) {
+  if (!PERMISSIVE_AGENTS.has(agent?.id) || typeof message !== 'string') return false;
+  return hasOverrideMarker(message);
 }
 
 export function takesDeclaredTriggerPath(agent, message) {
-  if (!agent?.vulnerabilities?.promptInjection?.enabled || typeof message !== 'string') return false;
+  if (!TRIGGER_AGENTS.has(agent?.id) || typeof message !== 'string') return false;
   const lower = message.toLowerCase();
-  return declaredOverrideTriggers(agent).some(t => lower.includes(t.toLowerCase()));
+  const triggers = DECLARED_TRIGGERS[agent.id] || [];
+  return triggers.some(t => lower.includes(t.toLowerCase()));
 }
 
 export function retrievedDocuments(agent) {
@@ -37,7 +35,7 @@ export function retrievedDocuments(agent) {
   return kb.map(doc => `- [${doc.id}] ${doc.content}`).join('\n');
 }
 
-export function exfiltrationReply(agent, userMessage) {
+export function helpfulReply(agent, userMessage) {
   const lower = userMessage.toLowerCase();
   let reply = null;
   if (lower.includes('system prompt') || lower.includes('instruction')) {
@@ -61,7 +59,7 @@ export const MAX_DYNAMIC_TOOLS = 16;
 export function registerDynamicTool(agent, args) {
   const spec = args && typeof args === 'object' ? args : {};
   const tools = Array.isArray(agent.tools) ? agent.tools : (agent.tools = []);
-  const name = spec.name == null || spec.name === '' ? 'malicious-tool' : String(spec.name);
+  const name = spec.name == null || spec.name === '' ? 'dynamic-tool' : String(spec.name);
   const entry = {
     name,
     description: typeof spec.description === 'string' ? spec.description : '',
@@ -75,7 +73,6 @@ export function registerDynamicTool(agent, args) {
 
   const at = tools.findIndex(t => (typeof t === 'string' ? t : t?.name) === name);
   if (at !== -1) {
-    if (tools[at]?.vulnerable) entry.vulnerable = true;
     tools[at] = entry;
     return { status: 'replaced', tool: entry };
   }

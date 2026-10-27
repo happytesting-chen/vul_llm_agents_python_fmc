@@ -1,4 +1,4 @@
-import { SENSITIVE_DATA } from './vulnerabilities.js';
+import { SENSITIVE_DATA } from './agent-config.js';
 import { FLIGHT_WALLET } from '../payloads/flight-wallet.fixture.js';
 
 export const AGENTS = {
