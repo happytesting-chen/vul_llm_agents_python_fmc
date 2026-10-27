@@ -1,0 +1,7 @@
+Research Assistant
+
+Python implementation extracted and reorganized from the standalone Python
+research assistant in happytesting-chen/vulnerable_ai_agents.
+Modified in October 2026: split runtime modules, updated research instructions,
+and added tool argument and report size validation.
+Distributed under the Apache License, Version 2.0.
